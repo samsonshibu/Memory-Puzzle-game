@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Puzzle</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Space+Grotesk:wght@400;500;700&display=swap');
+
+  :root {
+    --teal-deep: #1B4B43;
+    --teal-dark: #123531;
+    --mustard: #E8A33D;
+    --cream: #F6EFDF;
+    --coral: #E85C41;
+    --charcoal: #24211C;
+    --tile-back: #2E7566;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--teal-deep);
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(255,255,255,0.04) 0, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255,255,255,0.03) 0, transparent 40%);
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--cream);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 64px;
+  }
+
+  .board-wrap {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+    border-bottom: 2px solid rgba(246, 239, 223, 0.15);
+    padding-bottom: 18px;
+    margin-bottom: 28px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: clamp(2rem, 6vw, 2.75rem);
+    margin: 0;
+    letter-spacing: -0.01em;
+    color: var(--mustard);
+    line-height: 1;
+  }
+
+  h1 span {
+    display: block;
+    font-size: 0.42em;
+    font-weight: 500;
+    color: var(--cream);
+    opacity: 0.75;
+    margin-top: 6px;
+    letter-spacing: 0.01em;
+  }
+
+  .stats {
+    display: flex;
+    gap: 22px;
+    align-items: center;
+  }
+
+  .stat {
+    text-align: right;
+  }
+
+  .stat .value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat .label {
+    font-size: 0.72rem;
+    opacity: 0.65;
+    margin-top: 2px;
+  }
+
+  button.reset {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    background: var(--coral);
+    color: var(--cream);
+    border: none;
+    border-radius: var(--radius);
+    padding: 10px 18px;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+
+  button.reset:hover { background: #d14e34; }
+  button.reset:active { transform: scale(0.96); }
+  button.reset:focus-visible,
+  .card:focus-visible {
+    outline: 3px solid var(--mustard);
+    outline-offset: 2px;
+  }
+
+  .difficulty {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+
+  .difficulty button {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: transparent;
+    color: var(--cream);
+    border: 1.5px solid rgba(246,239,223,0.3);
+    border-radius: 999px;
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .difficulty button.active {
+    background: var(--mustard);
+    border-color: var(--mustard);
+    color: var(--charcoal);
+    font-weight: 700;
+  }
+
+  .grid {
+    display: grid;
+    gap: 12px;
+    perspective: 800px;
+  }
+
+  .grid.size-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid.size-6 { grid-template-columns: repeat(6, 1fr); }
+
+  .card {
+    aspect-ratio: 1;
+    position: relative;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+    border: none;
+    background: none;
+    padding: 0;
+  }
+
+  .card.flipped,
+  .card.matched {
+    transform: rotateY(180deg);
+  }
+
+  .card .face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .card .back {
+    background: var(--tile-back);
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18), 0 2px 4px rgba(0,0,0,0.25);
+  }
+
+  .card .back::after {
+    content: "?";
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 1.6rem;
+    color: rgba(246, 239, 223, 0.35);
+  }
+
+  .card .front {
+    background: var(--cream);
+    transform: rotateY(180deg);
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.08);
+  }
+
+  .card.matched .front {
+    background: var(--mustard);
+  }
+
+  .card.matched {
+    cursor: default;
+  }
+
+  .card:not(.matched):hover .back {
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18), 0 3px 8px rgba(0,0,0,0.3);
+    filter: brightness(1.08);
+  }
+
+  .win-banner {
+    margin-top: 24px;
+    background: var(--coral);
+    color: var(--cream);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    text-align: center;
+    font-weight: 700;
+    display: none;
+  }
+
+  .win-banner.show {
+    display: block;
+    animation: pulse-in 0.4s ease;
+  }
+
+  .win-banner .sub {
+    font-weight: 500;
+    font-size: 0.85rem;
+    opacity: 0.9;
+    margin-top: 4px;
+  }
+
+  @keyframes pulse-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card, .win-banner.show { animation: none; transition: none; }
+  }
+
+  footer {
+    margin-top: 40px;
+    font-size: 0.78rem;
+    opacity: 0.5;
+    text-align: center;
+  }
+
+  @media (max-width: 420px) {
+    .grid.size-6 { gap: 8px; }
+    header { align-items: flex-start; }
+    .stats { gap: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="board-wrap">
+  <header>
+    <h1>Memory<span>a tile-matching puzzle</span></h1>
+    <div class="stats">
+      <div class="stat">
+        <div class="value" id="moves">0</div>
+        <div class="label">Moves</div>
+      </div>
+      <div class="stat">
+        <div class="value" id="timer">00:00</div>
+        <div class="label">Time</div>
+      </div>
+      <button class="reset" id="resetBtn">New Game</button>
+    </div>
+  </header>
+
+  <div class="difficulty">
+    <button data-size="4" class="active">4 × 4 — Easy</button>
+    <button data-size="6">6 × 6 — Hard</button>
+  </div>
+
+  <div class="grid size-4" id="grid" role="grid" aria-label="Memory card grid"></div>
+
+  <div class="win-banner" id="winBanner">
+    <div id="winMessage">Solved!</div>
+    <div class="sub" id="winSub"></div>
+  </div>
+
+  <footer>Click or tap two tiles to find a match. Match every pair to win.</footer>
+</div>
+
+<script>
+  const SYMBOL_SETS = {
+    4: ['🍄','🌊','🐝','🔥','🍁','🌙','🦋','🍋'],
+    6: ['🍄','🌊','🐝','🔥','🍁','🌙','🦋','🍋','🐙','⭐','🍇','🐚','🌵','🍉','🦉','🍒','🌸','🐞']
+  };
+
+  const grid = document.getElementById('grid');
+  const movesEl = document.getElementById('moves');
+  const timerEl = document.getElementById('timer');
+  const resetBtn = document.getElementById('resetBtn');
+  const winBanner = document.getElementById('winBanner');
+  const winMessage = document.getElementById('winMessage');
+  const winSub = document.getElementById('winSub');
+  const difficultyBtns = document.querySelectorAll('.difficulty button');
+
+  let size = 4;
+  let cards = [];
+  let flipped = [];
+  let matchedCount = 0;
+  let moves = 0;
+  let seconds = 0;
+  let timerInterval = null;
+  let timerStarted = false;
+  let lockBoard = false;
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function formatTime(s) {
+    const m = Math.floor(s / 60).toString().padStart(2, '0');
+    const sec = (s % 60).toString().padStart(2, '0');
+    return `${m}:${sec}`;
+  }
+
+  function startTimer() {
+    if (timerStarted) return;
+    timerStarted = true;
+    timerInterval = setInterval(() => {
+      seconds++;
+      timerEl.textContent = formatTime(seconds);
+    }, 1000);
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+    timerStarted = false;
+  }
+
+  function buildBoard() {
+    stopTimer();
+    seconds = 0;
+    moves = 0;
+    matchedCount = 0;
+    flipped = [];
+    lockBoard = false;
+    timerEl.textContent = '00:00';
+    movesEl.textContent = '0';
+    winBanner.classList.remove('show');
+
+    const pairCount = (size * size) / 2;
+    const symbols = SYMBOL_SETS[size].slice(0, pairCount);
+    const deck = shuffle([...symbols, ...symbols]);
+
+    grid.className = `grid size-${size}`;
+    grid.innerHTML = '';
+    cards = deck.map((symbol, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'card';
+      btn.setAttribute('aria-label', 'Hidden tile');
+      btn.innerHTML = `
+        <span class="face back"></span>
+        <span class="face front">${symbol}</span>
+      `;
+      btn.dataset.symbol = symbol;
+      btn.dataset.index = i;
+      btn.addEventListener('click', () => onCardClick(btn));
+      grid.appendChild(btn);
+      return btn;
+    });
+  }
+
+  function onCardClick(card) {
+    if (lockBoard) return;
+    if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+    if (flipped.length === 2) return;
+
+    startTimer();
+    card.classList.add('flipped');
+    card.setAttribute('aria-label', `Tile showing ${card.dataset.symbol}`);
+    flipped.push(card);
+
+    if (flipped.length === 2) {
+      moves++;
+      movesEl.textContent = moves;
+      const [a, b] = flipped;
+      if (a.dataset.symbol === b.dataset.symbol) {
+        a.classList.add('matched');
+        b.classList.add('matched');
+        matchedCount += 2;
+        flipped = [];
+        if (matchedCount === cards.length) {
+          finishGame();
+        }
+      } else {
+        lockBoard = true;
+        setTimeout(() => {
+          a.classList.remove('flipped');
+          b.classList.remove('flipped');
+          a.setAttribute('aria-label', 'Hidden tile');
+          b.setAttribute('aria-label', 'Hidden tile');
+          flipped = [];
+          lockBoard = false;
+        }, 750);
+      }
+    }
+  }
+
+  function finishGame() {
+    stopTimer();
+    winMessage.textContent = 'Solved! 🎉';
+    winSub.textContent = `${moves} moves · ${formatTime(seconds)}`;
+    winBanner.classList.add('show');
+  }
+
+  resetBtn.addEventListener('click', buildBoard);
+
+  difficultyBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      difficultyBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      size = parseInt(btn.dataset.size, 10);
+      buildBoard();
+    });
+  });
+
+  buildBoard();
+</script>
+
+</body>
+</html>
